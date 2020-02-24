@@ -82,6 +82,52 @@ def FDK( projections, volume, geometry):
     """
     backproject(projections, volume, geometry, filtered = True)
    
+def SIRT_save( projections, volume, geometry, iterations, save_path):
+    """
+    Simultaneous Iterative Reconstruction Technique. Added saving loops.
+    """ 
+    ss = settings
+    preview = ss.preview    
+    bounds = ss.bounds
+    
+    logger.print('Feeling SIRTy...')
+    
+    # Residual norms:    
+    rnorms = []
+    
+    # Progress bar:
+    pbar = _pbar_start_(iterations, 'iterations')
+        
+    for ii in range(iterations):
+        
+        # L2 update:
+        norm = l2_update(projections, volume, geometry)
+        
+        if norm:
+            rnorms.append(norm)
+        
+        # Apply bounds
+        if bounds:
+            numpy.clip(volume, a_min = bounds[0], a_max = bounds[1], out = volume)    
+       
+        if preview:
+            display.slice(volume, dim = 1, title = 'Preview')
+        else:
+            _pbar_update_(pbar)
+            
+        if ii%10 == 0:
+            data.write_image(str(save_path / ('slices/iter%s_324.tiff'%ii)), volume[324])
+            
+        if ii%100 ==0:
+            data.write_stack(str(save_path / ('iter%s_fullres'%ii)), 'slice_vert', volume, dim = 0)
+
+    # Stop progress bar    
+    _pbar_close_(pbar)
+                     
+    if rnorms:   
+         display.plot2d(rnorms, semilogy = True, title = 'Residual L2')   
+         numpy.save('./rnorms/rnorms.npy',numpy.asarray(rnorms))
+         
 def SIRT( projections, volume, geometry, iterations):
     """
     Simultaneous Iterative Reconstruction Technique.
@@ -114,12 +160,14 @@ def SIRT( projections, volume, geometry, iterations):
             display.slice(volume, dim = 1, title = 'Preview')
         else:
             _pbar_update_(pbar)
-
+            
+        
     # Stop progress bar    
     _pbar_close_(pbar)
                      
     if rnorms:   
-         display.plot2d(rnorms, semilogy = True, title = 'Resudual L2')   
+         display.plot2d(rnorms, semilogy = True, title = 'Residual L2')   
+
          
 def PWLS(projections, volume, geometry, iterations):
     """
@@ -359,9 +407,15 @@ def l2_update(projections, volume, geometry):
         # Forwardproject:
         residual = numpy.ascontiguousarray(numpy.zeros_like(subset))        
         _forwardproject_block_add_(residual, volume, pro_geom, vol_geom)   
+        
+        #display.slice(volume, dim = 0, title = 'volume')
+        #display.slice(residual, dim = 1, title = 'residual')
             
         # Apply filters:
         residual = _filter_residual_(subset, residual)
+        
+        #display.slice(subset, dim = 1, title = 'subset')
+        #display.slice(residual, dim = 1, title = 'residual - subset')
         
         # L2 norm (use the last block to update):
         if update:
@@ -374,7 +428,9 @@ def l2_update(projections, volume, geometry):
         
         # Project
         residual *= bp_weight * subsets * 2
-        _backproject_block_add_(residual, volume, pro_geom, vol_geom, filtered  = False)    
+        _backproject_block_add_(residual, volume, pro_geom, vol_geom, filtered  = False)  
+        
+        #display.slice(volume, dim = 0, title = 'resid->volume')
         
     return rnorm / subsets
 
@@ -624,25 +680,25 @@ def _backprojector_norm_(vol_shape, geometry):
     width = numpy.sqrt((numpy.array(vol_shape)**2).sum())
     
     return 1 / (geometry.voxel * width)
-        
+            
 def _bp_norm_(projections, volume, geometry):
     """
     Compute a normalization factor in backprojection operator....
-    """       
+    """      
     if type(geometry) == list:
         # This is a dirty fix, assuming that if a list of geometries is provided, they have same voxel and pixel sizes.
         vv = geometry[0].voxel
         det_sam = geometry[0].det_sample[1]
         
-        pix = (vv[0] * vv[1] * vv[2] * vv[2]) / det_sam
+        pix = (vv[1] * vv[1] * vv[2] * vv[2]) / det_sam
         return 1 / (projections[0].shape[1] * pix * max(volume.shape))
     
     else:
         vv = geometry.voxel
         det_sam = geometry.det_sample[1]
     
-        pix = (vv[0] * vv[1] * vv[2] * vv[2]) / det_sam
-        return 1 / (projections.shape[1] * pix * max(volume.shape))
+        pix = (vv[1] * vv[1] * vv[2] * vv[2]) / det_sam
+        return 1 / (projections.shape[1] * pix * max(volume.shape))    
         
 def _backproject_block_add_(projections, volume, proj_geom, vol_geom, filtered = False, sign = 1):
     """

@@ -18,14 +18,14 @@ import numpy
 
 #%% Read data:
     
-path = '/ufs/ciacc/flexbox/good/'
+path = '/export/scratch2/bossema/May13Rubens/SK-A4051/tile3'
 
-binn = 1
+binn = 8
 dark = data.read_stack(path, 'di00', sample = binn)
 flat = data.read_stack(path, 'io00', sample = binn)    
 proj = data.read_stack(path, 'scan_', sample = binn, skip = binn)
 
-geom = data.read_flexraylog(path, sample = binn)   
+geom = data.read_flexraymeta(path, sample = binn)   
  
 #%% Prepro:
     
