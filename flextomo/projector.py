@@ -118,14 +118,16 @@ def SIRT_save( projections, volume, geometry, iterations, save_path):
         #if ii%10 == 0:
             #data.write_image(str(save_path / ('slices/iter%s_324.tiff'%ii)), volume[324])
             
-        if ii%100 ==0:
+        if ii%100 ==0 & ii != 0:
             data.write_stack(str(save_path + ('iter%s_fullres'%ii)), 'slice_vert', volume, dim = 0)
 
     # Stop progress bar    
     _pbar_close_(pbar)
                      
     if rnorms:   
-         display.plot2d(rnorms, semilogy = True, title = 'Residual L2', save_path = save_path)   
+         display.plot2d(rnorms, semilogy = True, title = 'Residual L2', save_path = save_path)  
+         plt.show()
+         plt.savefig(save_path+'rnorms.png')
          numpy.save(save_path +'rnorms%s.npy'%iterations,numpy.asarray(rnorms))
          
 def SIRT( projections, volume, geometry, iterations):
