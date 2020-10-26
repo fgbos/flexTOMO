@@ -82,53 +82,7 @@ def FDK( projections, volume, geometry):
     """
     backproject(projections, volume, geometry, filtered = True)
    
-def SIRT_save( projections, volume, geometry, iterations, save_path):
-    """
-    Simultaneous Iterative Reconstruction Technique. Added saving loops.
-    """ 
-    ss = settings
-    preview = ss.preview    
-    bounds = ss.bounds
-    
-    logger.print('Feeling SIRTy...')
-    
-    # Residual norms:    
-    rnorms = []
-    
-    # Progress bar:
-    pbar = _pbar_start_(iterations, 'iterations')
-        
-    for ii in range(iterations):
-        
-        # L2 update:
-        norm = l2_update(projections, volume, geometry)
-        
-        if norm:
-            rnorms.append(norm)
-        
-        # Apply bounds
-        if bounds:
-            numpy.clip(volume, a_min = bounds[0], a_max = bounds[1], out = volume)    
-       
-        if preview:
-            display.slice(volume, dim = 1, title = 'Preview')
-        else:
-            _pbar_update_(pbar)
-            
-        #if ii%10 == 0:
-            #data.write_image(str(save_path / ('slices/iter%s_324.tiff'%ii)), volume[324])
-            
-        if ii%100 ==0 & ii != 0:
-            data.write_stack(str(save_path + ('iter%s_fullres'%ii)), 'slice_vert', volume, dim = 0)
 
-    # Stop progress bar    
-    _pbar_close_(pbar)
-                     
-    if rnorms:   
-         display.plot2d(rnorms, semilogy = True, title = 'Residual L2', save_path = save_path)  
-         plt.show()
-         plt.savefig(save_path+'rnorms.png')
-         numpy.save(save_path +'rnorms%s.npy'%iterations,numpy.asarray(rnorms))
          
 def SIRT( projections, volume, geometry, iterations):
     """
@@ -168,7 +122,8 @@ def SIRT( projections, volume, geometry, iterations):
     _pbar_close_(pbar)
                      
     if rnorms:   
-         display.plot2d(rnorms, semilogy = True, title = 'Residual L2')   
+         display.plot2d(rnorms, semilogy = True, title = 'Residual L2')  
+         return rnorms
 
          
 def PWLS(projections, volume, geometry, iterations):
